@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>Lisbon Free with a 3+ Kid</title>
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+ <style>
+ :root {
+ --ink: #12202b; --paper: #f6f1e6; --tile: #1b6b8a; --tile-dark: #0e4a62;
+ --sun: #e7a23a; --muted: #5c6b74; --card: #fffdf8;
+ --shadow: 0 10px 30px rgba(18,32,43,.12);
+ }
+ * { box-sizing: border-box; }
+ html, body { height: 100%; margin: 0; }
+ body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+ .app { display: grid; grid-template-columns: 400px 1fr; height: 100%; }
+ header.brand { padding: 18px 20px 10px; background: linear-gradient(180deg, #eaf4f8, #f6f1e6); border-bottom: 1px solid #e2d8c4; }
+ header.brand h1 { margin: 0 0 4px; font-size: 1.28rem; letter-spacing: -.03em; }
+ header.brand p { margin: 0; color: var(--muted); font-size: .9rem; }
+ .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 8px; }
+ .filters button { border: 1px solid #d7ccb6; background: #fff; border-radius: 999px; padding: 6px 10px; font-size: .78rem; cursor: pointer; }
+ .filters button.on { background: var(--tile); border-color: var(--tile); color: #fff; }
+ .search, .locate { padding: 0 16px 10px; }
+ .search input, .locate button { width: 100%; border-radius: 10px; padding: 10px 12px; font: inherit; }
+ .search input { border: 1px solid #d7ccb6; }
+ .locate button { border: 0; background: var(--tile-dark); color: #fff; cursor: pointer; }
+ .list { overflow: auto; height: calc(100vh - 236px); padding: 0 12px 20px; }
+ .card { background: var(--card); border: 1px solid #eadfca; border-radius: 14px; padding: 12px; margin-bottom: 10px; cursor: pointer; box-shadow: var(--shadow); }
+ .card.active, .card:hover { outline: 2px solid var(--tile); }
+ .card h3 { margin: 0 0 4px; font-size: 1rem; }
+ .meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+ .tag { font-size: .7rem; padding: 3px 7px; border-radius: 999px; background: #e8f3f7; color: var(--tile-dark); }
+ .tag.animal { background: #e7f3ea; color: #2d5d37; }
+ .tag.play { background: #fff1d6; color: #8a5a12; }
+ .tag.water { background: #dceefc; color: #1a5278; }
+ .tag.view { background: #f3e8ff; color: #5b3d7a; }
+ .tag.indoor { background: #fde8e4; color: #8a3b30; }
+ .tag.paid { background: #f8e0dc; color: #8a2e22; }
+ .card p { margin: 0; font-size: .84rem; color: var(--muted); }
+ #map { height: 100%; }
+ .map-wrap { position: relative; }
+ .map-note { position: absolute; z-index: 500; left: 12px; bottom: 12px; background: rgba(255,253,248,.94); border-radius: 10px; padding: 8px 10px; font-size: .75rem; color: var(--muted); box-shadow: var(--shadow); max-width: 260px; }
+ @media (max-width: 860px) {
+ .app { grid-template-columns: 1fr; grid-template-rows: 48vh 52vh; }
+ .list { height: calc(52vh - 210px); }
+ }
+ </style>
+</head>
+<body>
+ <div class="app">
+ <aside>
+ <header class="brand">
+ <h1>Lisbon, free with a 3+ kid</h1>
+ <p>Parks, animals, fountains and a few indoor spots. Oceanário and Zoo marked as paid.</p>
+ </header>
+ <div class="filters" id="filters"></div>
+ <div class="search"><input id="q" placeholder="Search a place…" /></div>
+ <div class="locate"><button id="near">Use my location</button></div>
+ <div class="list" id="list"></div>
+ </aside>
+ <div class="map-wrap">
+ <div id="map"></div>
+ <div class="map-note">Blue = always free. Gold = child often free. Red = paid.</div>
+ </div>
+ </div>
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+ <script>
+ const places = [
+ { id:"quinta-olivais", name:"Quinta Pedagógica dos Olivais", lat:38.7692, lng:-9.1068, tags:["animal","always"], area:"Olivais", blurb:"City farm: sheep, goats, rabbits, chickens. Best free animal day." },
+ { id:"tapada", name:"Tapada das Necessidades", lat:38.7074, lng:-9.1724, tags:["animal","play","always"], area:"Alcântara", blurb:"Peacocks, cactus ruin, quiet royal park." },
+ { id:"gulbenkian", name:"Jardim Gulbenkian", lat:38.7374, lng:-9.1544, tags:["animal","play","always"], area:"São Sebastião", blurb:"Ponds, ducks, shade. Garden is free." },
+ { id:"estrela", name:"Jardim da Estrela", lat:38.7153, lng:-9.1596, tags:["play","animal","always"], area:"Estrela", blurb:"Duck pond and one of the best central playgrounds." },
+ { id:"eduardo", name:"Parque Eduardo VII", lat:38.7284, lng:-9.1528, tags:["play","view","always"], area:"Avenidas Novas", blurb:"Huge slope, city view, playgrounds at the top." },
+ { id:"nacoes", name:"Parque das Nações / Jardim das Ondas", lat:38.7627, lng:-9.0953, tags:["water","play","always"], area:"Parque das Nações", blurb:"Water jets, flat promenade, playgrounds." },
+ { id:"conchas", name:"Quinta das Conchas e dos Lilases", lat:38.7750, lng:-9.1554, tags:["play","always"], area:"Lumiar", blurb:"Big lawns and excellent playgrounds." },
+ { id:"indios", name:"Parque dos Índios", lat:38.7353, lng:-9.1828, tags:["play","always"], area:"Monsanto", blurb:"Age-split playground, slides, bike circuit, shade." },
+ { id:"monsanto", name:"Monsanto Forest Park", lat:38.7328, lng:-9.1905, tags:["play","always"], area:"Monsanto", blurb:"Forest picnic. Paid adventure bits inside are extra." },
+ { id:"amalia", name:"Jardim Amália Rodrigues", lat:38.7311, lng:-9.1558, tags:["view","play","always"], area:"Avenidas Novas", blurb:"Small garden with a view." },
+ { id:"torel", name:"Jardim do Torel", lat:38.7169, lng:-9 .1403, tags:["view","play","always"], area:"Pena", blurb:"Compact garden and viewpoint." },
+ { id:"ribeira", name:"Ribeira das Naus", lat:38.7070, lng:-9.1434, tags:["water","always"], area:"Cais do Sodré", blurb:"Wide river terrace, no cars." },
+ { id:"comercio", name:"Praça do Comércio", lat:38.7076, lng:-9.1365, tags:["water","always"], area:"Baixa", blurb:"Giant square, river arch, trams." },
+ { id:"docas", name:"Docas de Santo Amaro", lat:38.7004, lng:-9.1768, tags:["water","always"], area:"Alcântara", blurb:"Boats under the 25 de Abril bridge." },
+ { id:"belem-water", name:"Belém waterfront", lat:38.6957, lng:-9.2062, tags:["water","always"], area:"Belém", blurb:"Grass and river. Pastéis cost extra." },
+ { id:"fountains", name:"Alameda dos Oceanos fountains", lat:38.7612, lng:-9.0968, tags:["water","always"], area:"Parque das Nações", blurb:"Splash-park fountains. Bring a towel." },
+ { id:"smonte", name:"Miradouro da Senhora do Monte", lat:38.7190, lng:-9.1324, tags:["view","always"], area:"Graça", blurb:"Castle view and space to sit." },
+ { id:"graca", name:"Miradouro da Graça", lat:38.7164, lng:-9.1309, tags:["view","always"], area:"Graça", blurb:"Classic lookout. Hold hands near the wall." },
+ { id:"portas", name:"Portas do Sol / Santa Luzia", lat:38.7116, lng:-9.1303, tags:["view","always"], area:"Alfama", blurb:"Alfama rooftops." },
+ { id:"elevador", name:"Elevador do Castelo", lat:38.7118, lng:-9.1334, tags:["always"], area:"Castelo", blurb:"Free public lift up the hill." },
+ { id:"dinheiro", name:"Museu do Dinheiro", lat:38.7087, lng:-9.1388, tags:["indoor","always"], area:"Baixa", blurb:"Always-free interactive money museum." },
+ { id:"lx", name:"LX Factory", lat:38.7034, lng:-9.1787, tags:["always"], area:"Alcântara", blurb:"Street art and odd corners." },
+ { id:"timeout", name:"Time Out Market", lat:38.7071, lng:-9.1457, tags:["indoor","always"], area:"Cais do Sodré", blurb:"Free to walk through. Food costs." },
+ { id:"se", name:"Sé Cathedral nave", lat:38.7098, lng:-9.1329, tags:["indoor","always"], area:"Alfama", blurb:"Free to step inside. Keep it short." },
+ { id:"baldaya", name:"Palácio Baldaya", lat:38.7514, lng:-9.2024, tags:["indoor","always"], area:"Benfica", blurb:"Often free family events." },
+ { id:"jeronimos", name:"Mosteiro dos Jerónimos", lat:38.6978, lng:-9.2065, tags:["childfree","indoor"], area:"Belém", blurb:"Cloisters. Child ≤12 free at MMP sites." },
+ { id:"torre", name:"Torre de Belém", lat:38.6916, lng:-9.2159, tags:["childfree","water"], area:"Belém", blurb:"Fortress on the water. Child ≤12 free." },
+ { id:"coches", name:"Museu Nacional dos Coches", lat:38.6963, lng:-9.1984, tags:["childfree","indoor"], area:"Belém", blurb:"Giant carriages. Great for ages 3–6." },
+ { id:"pantheon", name:"Panteão Nacional", lat:38.7150, lng:-9.1248, tags:["childfree","view","indoor"], area:"Graça", blurb:"Dome and echo. Child ≤12 free." },
+ { id:"ajuda", name:"Palácio Nacional da Ajuda", lat:38.7076, lng:-9.1978, tags:["childfree","indoor"], area:"Ajuda", blurb:"Gold rooms. Child ≤12 free." },
+ { id:"estufa", name:"Estufa Fria", lat:38.7298, lng:-9.1542, tags:["childfree","play"], area:"Eduardo VII", blurb:"Plant caves. Often free under 6; Sundays to 14:00 for all." },
+ { id:"oceanario", name:"Oceanário de Lisboa", lat:38.7635, lng:-9.0938, tags:["paid","animal","indoor"], area:"Parque das Nações", blurb:"Not free at 3+. Late afternoon online ~€38, or €9 if adult ≤30 until 30 Sep 2026." },
+ { id:"zoo", name:"Jardim Zoológico", lat:38.7442, lng:-9.1713, tags:["paid","animal"], area:"Sete Rios", blurb:"Not free. Online about €47.50 for 1 adult + child." }
+ ];
+ const filters = [
+ {id:"all",label:"All"},{id:"always",label:"Always free"},{id:"childfree",label:"Child often free"},
+ {id:"animal",label:"Animals"},{id:"play",label:"Playgrounds"},{id:"water",label:"Water / splash"},
+ {id:"view",label:"Views"},{id:"indoor",label:"Indoor"},{id:"paid",label:"Paid (Oceanário / Zoo)"}
+ ];
+ let active = "all";
+ const map = L.map("map").setView([38.73,-9.15],12);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(map);
+ const layer = L.layerGroup().addTo(map);
+ const markers = {};
+ function colorFor(p){ if(p.tags.includes("paid")) return "#c45c4a"; if(p.tags.includes("childfree")) return "#e7a23a"; return "#1b6b8a"; }
+ function pin(p){ return L.divIcon({className:"",html:`<div style="width:16px;height:16px;border-radius:50%;background:${colorFor(p)};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,iconSize:[16,16],iconAnchor:[8,8]}); }
+ function visible(){ const q=document.getElementById("q").value.toLowerCase(); return places.filter(p=>(active==="all"||p.tags.includes(active))&&(!q||(p.name+p.area+p.blurb).toLowerCase().includes(q))); }
+ function tagLabel(t){ return ({always:"Always free",childfree:"Child ≤12 often free",animal:"Animals",play:"Play",water:"Water",view:"View",indoor:"Indoor",paid:"Paid"})[t]||t; }
+ function highlight(id){ document.querySelectorAll(".card").forEach(c=>c.classList.toggle("active",c.dataset.id===id)); const el=document.querySelector(`.card[data-id="${id}"]`); if(el) el.scrollIntoView({block:"nearest"}); }
+ function render(){
+ const data=visible();
+ document.getElementById("list").innerHTML=data.map(p=>`<article class="card" data-id="${p.id}"><h3>${p.name}</h3><div class="meta">${p.tags.map(t=>`<span class="tag ${t}">${tagLabel(t)}</span>`).join("")}<span class="tag">${p.area}</span></div><p>${p.blurb}</p></article>`).join("")||"<p style='padding:12px;color:#5c6b74'>No matches.</p>";
+ layer.clearLayers();
+ data.forEach(p=>{ const m=L.marker([p.lat,p.lng],{icon:pin(p)}).addTo(layer); m.bindPopup(`<strong>${p.name}</strong><br>${p.blurb}`); m.on("click",()=>highlight(p.id)); markers[p.id]=m; });
+ document.querySelectorAll(".card").forEach(card=>card.onclick=()=>{ const p=places.find(x=>x.id===card.dataset.id); map.setView([p.lat,p.lng],16); markers[p.id].openPopup(); highlight(p.id); });
+ }
+ filters.forEach(f=>{ const b=document.createElement("button"); b.textContent=f.label; if(f.id==="all") b.classList.add("on"); b.onclick=()=>{ active=f.id; [...document.getElementById("filters").children].forEach(x=>x.classList.remove("on")); b.classList.add("on"); render(); }; document.getElementById("filters").appendChild(b); });
+ document.getElementById("q").oninput=render;
+ document.getElementById("near").onclick=()=>{ if(!navigator.geolocation) return alert("Location not available"); navigator.geolocation.getCurrentPosition(pos=>{ const here=L.latLng(pos.coords.latitude,pos.coords.longitude); L.circleMarker(here,{radius:8,color:"#3d7a4a"}).addTo(map).bindPopup("You are here"); map.setView(here,13); places.forEach(p=>p._d=here.distanceTo([p.lat,p.lng])); places.sort((a,b)=>(a._d||0)-(b._d||0)); render(); },()=>alert("Could not get location")); };
+ render();
+ </script>
+</body>
+</html>
