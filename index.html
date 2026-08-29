@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lisbon Free with a 3+ Kid</title>
+  <title>Лісабон безкоштовно з дитиною 3+</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -14,17 +14,18 @@
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--paper); }
-    .app { display: grid; grid-template-columns: 380px 1fr; height: 100%; }
+    .app { display: grid; grid-template-columns: 400px 1fr; height: 100%; }
     header.brand { padding: 18px 20px 12px; background: linear-gradient(180deg, #eaf4f8, #f6f1e6); border-bottom: 1px solid #e2d8c4; }
-    header.brand h1 { margin: 0 0 4px; font-size: 1.28rem; letter-spacing: -.03em; }
-    header.brand p { margin: 0; color: var(--muted); font-size: .9rem; }
+    header.brand h1 { margin: 0 0 4px; font-size: 1.22rem; letter-spacing: -.03em; }
+    header.brand p { margin: 0; color: var(--muted); font-size: .88rem; }
     .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
     .filters button { border: 1px solid #d7ccb6; background: #fff; border-radius: 999px; padding: 6px 10px; font-size: .78rem; cursor: pointer; }
     .filters button.on { background: var(--tile); border-color: var(--tile); color: #fff; }
     .list { overflow: auto; height: calc(100vh - 168px); padding: 0 12px 20px; }
-    .card { background: var(--card); border: 1px solid #eadfca; border-radius: 14px; padding: 12px; margin-bottom: 10px; cursor: pointer; box-shadow: var(--shadow); }
-    .card.active, .card:hover { outline: 2px solid var(--tile); }
-    .card h3 { margin: 0 0 4px; font-size: 1rem; }
+    .card { background: var(--card); border: 1px solid #eadfca; border-radius: 14px; padding: 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .card.active { outline: 2px solid var(--tile); }
+    .card h3 { margin: 0 0 2px; font-size: 1rem; cursor: pointer; }
+    .pt { margin: 0 0 6px; font-size: .75rem; color: #7a6a52; }
     .meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
     .tag { font-size: .7rem; padding: 3px 7px; border-radius: 999px; background: #e8f3f7; color: #0e4a62; }
     .tag.animal { background: #e7f3ea; color: #2d5d37; }
@@ -33,13 +34,17 @@
     .tag.view { background: #f3e8ff; color: #5b3d7a; }
     .tag.indoor { background: #fde8e4; color: #8a3b30; }
     .tag.paid { background: #f8e0dc; color: #8a2e22; }
-    .card p { margin: 0; font-size: .84rem; color: var(--muted); }
+    .card p { margin: 0 0 8px; font-size: .84rem; color: var(--muted); }
+    .go {
+      display: inline-block; background: #0e4a62; color: #fff; text-decoration: none;
+      border-radius: 8px; padding: 7px 10px; font-size: .8rem;
+    }
     #map { height: 100%; }
     .map-wrap { position: relative; }
-    .map-note { position: absolute; z-index: 500; left: 12px; bottom: 12px; background: rgba(255,253,248,.94); border-radius: 10px; padding: 8px 10px; font-size: .75rem; color: var(--muted); box-shadow: var(--shadow); max-width: 260px; }
+    .map-note { position: absolute; z-index: 500; left: 12px; bottom: 12px; background: rgba(255,253,248,.94); border-radius: 10px; padding: 8px 10px; font-size: .75rem; color: var(--muted); box-shadow: var(--shadow); max-width: 280px; }
     @media (max-width: 860px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: 50vh 50vh; }
-      .list { height: calc(50vh - 160px); }
+      .app { grid-template-columns: 1fr; grid-template-rows: 48vh 52vh; }
+      .list { height: calc(52vh - 160px); }
     }
   </style>
 </head>
@@ -47,59 +52,74 @@
   <div class="app">
     <aside>
       <header class="brand">
-        <h1>Lisbon, free with a 3+ kid</h1>
-        <p>Click a pin or a card. Blue always free · gold child often free · red paid.</p>
+        <h1>Лісабон безкоштовно з дитиною 3+</h1>
+        <p>Синій — завжди безкоштовно · жовтий — дитина часто безкоштовно · червоний — платно. «Маршрут» шукає місце за назвою в Google Maps.</p>
       </header>
       <div class="filters" id="filters"></div>
       <div class="list" id="list"></div>
     </aside>
     <div class="map-wrap">
       <div id="map"></div>
-      <div class="map-note">Whole city map. Scroll and pinch to zoom.</div>
+      <div class="map-note">Карта всього міста. Натисніть «Маршрут», щоб відкрити точну назву в картах.</div>
     </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const places = [
-      { id:"quinta-olivais", name:"Quinta Pedagógica dos Olivais", lat:38.7692, lng:-9.1068, tags:["animal","always"], area:"Olivais", blurb:"City farm: sheep, goats, rabbits, chickens. Best free animal day." },
-      { id:"tapada", name:"Tapada das Necessidades", lat:38.7074, lng:-9.1724, tags:["animal","play","always"], area:"Alcântara", blurb:"Peacocks, cactus ruin, quiet royal park." },
-      { id:"gulbenkian", name:"Jardim Gulbenkian", lat:38.7374, lng:-9.1544, tags:["animal","play","always"], area:"São Sebastião", blurb:"Ponds, ducks, shade. Garden is free." },
-      { id:"estrela", name:"Jardim da Estrela", lat:38.7153, lng:-9.1596, tags:["play","animal","always"], area:"Estrela", blurb:"Duck pond and one of the best central playgrounds." },
-      { id:"eduardo", name:"Parque Eduardo VII", lat:38.7284, lng:-9.1528, tags:["play","view","always"], area:"Avenidas Novas", blurb:"Huge slope, city view, playgrounds at the top." },
-      { id:"nacoes", name:"Parque das Nações / Jardim das Ondas", lat:38.7627, lng:-9.0953, tags:["water","play","always"], area:"Parque das Nações", blurb:"Water jets, flat promenade, playgrounds." },
-      { id:"conchas", name:"Quinta das Conchas e dos Lilases", lat:38.7750, lng:-9.1554, tags:["play","always"], area:"Lumiar", blurb:"Big lawns and excellent playgrounds." },
-      { id:"indios", name:"Parque dos Índios", lat:38.7353, lng:-9.1828, tags:["play","always"], area:"Monsanto", blurb:"Age-split playground, slides, bike circuit, shade." },
-      { id:"monsanto", name:"Monsanto Forest Park", lat:38.7328, lng:-9.1905, tags:["play","always"], area:"Monsanto", blurb:"Forest picnic. Paid adventure bits inside are extra." },
-      { id:"amalia", name:"Jardim Amália Rodrigues", lat:38.7311, lng:-9.1558, tags:["view","play","always"], area:"Avenidas Novas", blurb:"Small garden with a view." },
-      { id:"torel", name:"Jardim do Torel", lat:38.7169, lng:-9.1403, tags:["view","play","always"], area:"Pena", blurb:"Compact garden and viewpoint." },
-      { id:"ribeira", name:"Ribeira das Naus", lat:38.7070, lng:-9.1434, tags:["water","always"], area:"Cais do Sodré", blurb:"Wide river terrace, no cars." },
-      { id:"comercio", name:"Praça do Comércio", lat:38.7076, lng:-9.1365, tags:["water","always"], area:"Baixa", blurb:"Giant square, river arch, trams." },
-      { id:"docas", name:"Docas de Santo Amaro", lat:38.7004, lng:-9.1768, tags:["water","always"], area:"Alcântara", blurb:"Boats under the 25 de Abril bridge." },
-      { id:"belem-water", name:"Belém waterfront", lat:38.6957, lng:-9.2062, tags:["water","always"], area:"Belém", blurb:"Grass and river. Pastéis cost extra." },
-      { id:"fountains", name:"Alameda dos Oceanos fountains", lat:38.7612, lng:-9.0968, tags:["water","always"], area:"Parque das Nações", blurb:"Splash-park fountains. Bring a towel." },
-      { id:"smonte", name:"Miradouro da Senhora do Monte", lat:38.7190, lng:-9.1324, tags:["view","always"], area:"Graça", blurb:"Castle view and space to sit." },
-      { id:"graca", name:"Miradouro da Graça", lat:38.7164, lng:-9.1309, tags:["view","always"], area:"Graça", blurb:"Classic lookout. Hold hands near the wall." },
-      { id:"portas", name:"Portas do Sol / Santa Luzia", lat:38.7116, lng:-9.1303, tags:["view","always"], area:"Alfama", blurb:"Alfama rooftops." },
-      { id:"elevador", name:"Elevador do Castelo", lat:38.7118, lng:-9.1334, tags:["always"], area:"Castelo", blurb:"Free public lift up the hill." },
-      { id:"dinheiro", name:"Museu do Dinheiro", lat:38.7087, lng:-9.1388, tags:["indoor","always"], area:"Baixa", blurb:"Always-free interactive money museum." },
-      { id:"lx", name:"LX Factory", lat:38.7034, lng:-9.1787, tags:["always"], area:"Alcântara", blurb:"Street art and odd corners." },
-      { id:"timeout", name:"Time Out Market", lat:38.7071, lng:-9.1457, tags:["indoor","always"], area:"Cais do Sodré", blurb:"Free to walk through. Food costs." },
-      { id:"se", name:"Sé Cathedral nave", lat:38.7098, lng:-9.1329, tags:["indoor","always"], area:"Alfama", blurb:"Free to step inside. Keep it short." },
-      { id:"baldaya", name:"Palácio Baldaya", lat:38.7514, lng:-9.2024, tags:["indoor","always"], area:"Benfica", blurb:"Often free family events." },
-      { id:"jeronimos", name:"Mosteiro dos Jerónimos", lat:38.6978, lng:-9.2065, tags:["childfree","indoor"], area:"Belém", blurb:"Cloisters. Child ≤12 free at MMP sites." },
-      { id:"torre", name:"Torre de Belém", lat:38.6916, lng:-9.2159, tags:["childfree","water"], area:"Belém", blurb:"Fortress on the water. Child ≤12 free." },
-      { id:"coches", name:"Museu Nacional dos Coches", lat:38.6963, lng:-9.1984, tags:["childfree","indoor"], area:"Belém", blurb:"Giant carriages. Great for ages 3–6." },
-      { id:"pantheon", name:"Panteão Nacional", lat:38.7150, lng:-9.1248, tags:["childfree","view","indoor"], area:"Graça", blurb:"Dome and echo. Child ≤12 free." },
-      { id:"ajuda", name:"Palácio Nacional da Ajuda", lat:38.7076, lng:-9.1978, tags:["childfree","indoor"], area:"Ajuda", blurb:"Gold rooms. Child ≤12 free." },
-      { id:"estufa", name:"Estufa Fria", lat:38.7298, lng:-9.1542, tags:["childfree","play"], area:"Eduardo VII", blurb:"Plant caves. Often free under 6; Sundays to 14:00 for all." },
-      { id:"oceanario", name:"Oceanário de Lisboa", lat:38.7635, lng:-9.0938, tags:["paid","animal","indoor"], area:"Parque das Nações", blurb:"Not free at 3+. Late afternoon online ~€38, or €9 if adult ≤30 until 30 Sep 2026." },
-      { id:"zoo", name:"Jardim Zoológico", lat:38.7442, lng:-9.1713, tags:["paid","animal"], area:"Sete Rios", blurb:"Not free. Online about €47.50 for 1 adult + child." }
+      { id:"quinta-olivais", name:"Педагогічна ферма Оліваїш", query:"Quinta Pedagógica dos Olivais Lisboa", lat:38.76855, lng:-9.10695, tags:["animal","always"], area:"Оліваїш", blurb:"Міська ферма: вівці, кози, кролики, кури. Найкращий безкоштовний «зоопарк»." },
+      { id:"tapada", name:"Тапада даш Несесідадеш", query:"Tapada das Necessidades Lisboa", lat:38.70695, lng:-9.17285, tags:["animal","play","always"], area:"Алкантара", blurb:"Павичі, стара оранжерея кактусів, тихий королівський парк." },
+      { id:"gulbenkian", name:"Сад Ґульбенкяна", query:"Jardim da Fundação Calouste Gulbenkian Lisboa", lat:38.73755, lng:-9.15395, tags:["animal","play","always"], area:"Сан-Себаштіан", blurb:"Ставки, качки, тінь. Сад безкоштовний." },
+      { id:"estrela", name:"Сад Ештрела", query:"Jardim da Estrela Lisboa", lat:38.71525, lng:-9.15955, tags:["play","animal","always"], area:"Ештрела", blurb:"Ставок з качками і один з найкращих майданчиків у центрі." },
+      { id:"eduardo", name:"Парк Едуарду VII", query:"Parque Eduardo VII Lisboa", lat:38.72835, lng:-9.15275, tags:["play","view","always"], area:"Авенідаш Новаш", blurb:"Великий схил, вид на місто, майданчики зверху." },
+      { id:"nacoes", name:"Парк Націй / Сад хвиль", query:"Jardim das Ondas Parque das Nações Lisboa", lat:38.76115, lng:-9.09655, tags:["water","play","always"], area:"Парк Націй", blurb:"Фонтани-бризки, рівна набережна, майданчики." },
+      { id:"conchas", name:"Кінта даш Коншаш", query:"Quinta das Conchas e dos Lilases Lisboa", lat:38.77095, lng:-9.15585, tags:["play","always"], area:"Луміар", blurb:"Великі газони і сучасні майданчики." },
+      { id:"indios", name:"Парк Індіанців", query:"Parque Recreativo do Alto da Serafina Parque dos Índios Lisboa", lat:38.73685, lng:-9.18395, tags:["play","always"], area:"Монсанту", blurb:"Майданчик за віком, гірки, велодоріжка, багато тіні." },
+      { id:"monsanto", name:"Лісовий парк Монсанту", query:"Parque Florestal de Monsanto Lisboa", lat:38.7278, lng:-9.1962, tags:["play","always"], area:"Монсанту", blurb:"Лісовий пікнік. Платні мотузкові парки всередині — окремо." },
+      { id:"amalia", name:"Сад Амалії Родрігеш", query:"Jardim Amália Rodrigues Lisboa", lat:38.73095, lng:-9.15555, tags:["view","play","always"], area:"Авенідаш Новаш", blurb:"Невеликий сад з видом. Короткий зупинка." },
+      { id:"torel", name:"Сад Торел", query:"Jardim do Torel Lisboa", lat:38.71685, lng:-9.14025, tags:["view","play","always"], area:"Пена", blurb:"Компактний сад і оглядовий майданчик." },
+      { id:"ribeira", name:"Рібейра даш Науш", query:"Ribeira das Naus Lisboa", lat:38.70655, lng:-9.14195, tags:["water","always"], area:"Кайш ду Содре", blurb:"Широка набережна без машин, човни, місце побігати." },
+      { id:"comercio", name:"Площа Комерсіу", query:"Praça do Comércio Lisboa", lat:38.7076, lng:-9.1365, tags:["water","always"], area:"Байша", blurb:"Величезна площа, арка до річки, трамваї." },
+      { id:"docas", name:"Доки Санту Амару", query:"Docas de Santo Amaro Lisboa", lat:38.70015, lng:-9.17735, tags:["water","always"], area:"Алкантара", blurb:"Човни під мостом 25 квітня." },
+      { id:"belem-water", name:"Набережна Белен", query:"Jardim da Torre de Belém Lisboa", lat:38.6939, lng:-9.2141, tags:["water","always"], area:"Белен", blurb:"Трава і річка. Паштейш — окремо." },
+      { id:"fountains", name:"Фонтани Алеї Океанів", query:"Alameda dos Oceanos Parque das Nações Lisboa", lat:38.7604, lng:-9.0978, tags:["water","always"], area:"Парк Націй", blurb:"Фонтани як водний майданчик. Візьміть рушник." },
+      { id:"smonte", name:"Мірадору Сеньора ду Монте", query:"Miradouro da Senhora do Monte Lisboa", lat:38.71885, lng:-9.13255, tags:["view","always"], area:"Граса", blurb:"Вид на замок і місце посидіти." },
+      { id:"graca", name:"Мірадору да Граса", query:"Miradouro da Graça Lisboa", lat:38.71625, lng:-9.13075, tags:["view","always"], area:"Граса", blurb:"Класичний огляд. Тримайте дитину біля парапету." },
+      { id:"portas", name:"Порташ ду Сол / Санта Лузія", query:"Miradouro das Portas do Sol Lisboa", lat:38.71155, lng:-9.13015, tags:["view","always"], area:"Алфама", blurb:"Дахи Алфами." },
+      { id:"elevador", name:"Ліфт до замку", query:"Elevador do Castelo Costa do Castelo Lisboa", lat:38.71235, lng:-9.13385, tags:["always"], area:"Замок", blurb:"Безкоштовний громадський ліфт вгору на пагорб." },
+      { id:"dinheiro", name:"Музей грошей", query:"Museu do Dinheiro Lisboa", lat:38.70855, lng:-9.13895, tags:["indoor","always"], area:"Байша", blurb:"Завжди безкоштовний інтерактивний музей." },
+      { id:"lx", name:"LX Factory", query:"LX Factory Lisboa", lat:38.70355, lng:-9.17895, tags:["always"], area:"Алкантара", blurb:"Стріт-арт і цікаві двори." },
+      { id:"timeout", name:"Time Out Market", query:"Time Out Market Lisboa", lat:38.70705, lng:-9.14575, tags:["indoor","always"], area:"Кайш ду Содре", blurb:"Зайти безкоштовно. Їжа платна." },
+      { id:"se", name:"Кафедральний собор Се", query:"Sé de Lisboa Catedral", lat:38.70979, lng:-9.13303, tags:["indoor","always"], area:"Алфама", blurb:"Зайти в неф безкоштовно. Коротко." },
+      { id:"baldaya", name:"Палац Балдайя", query:"Palácio Baldaya Benfica Lisboa", lat:38.75155, lng:-9.20215, tags:["indoor","always"], area:"Бенфіка", blurb:"Часто безкоштовні сімейні події районної управи." },
+      { id:"jeronimos", name:"Монастир Жеронімуш", query:"Mosteiro dos Jerónimos Lisboa", lat:38.6978, lng:-9.2064, tags:["childfree","indoor"], area:"Белен", blurb:"Клуатри як кам’яні печери. Дитина до 12 р. у держмузеях MMP безкоштовно." },
+      { id:"torre", name:"Вежа Белен", query:"Torre de Belém Lisboa", lat:38.6916, lng:-9.2160, tags:["childfree","water"], area:"Белен", blurb:"Фортеця на воді. Дитина до 12 безкоштовно. Буває тісно." },
+      { id:"coches", name:"Національний музей карет", query:"Museu Nacional dos Coches Lisboa", lat:38.69645, lng:-9.19855, tags:["childfree","indoor"], area:"Белен", blurb:"Величезні карети. Добре для 3–6 років." },
+      { id:"pantheon", name:"Національний пантеон", query:"Panteão Nacional Lisboa", lat:38.71495, lng:-9.12475, tags:["childfree","view","indoor"], area:"Граса", blurb:"Купол і відлуння. Дитина до 12 безкоштовно." },
+      { id:"ajuda", name:"Національний палац Ажуда", query:"Palácio Nacional da Ajuda Lisboa", lat:38.70755, lng:-9.19835, tags:["childfree","indoor"], area:"Ажуда", blurb:"Золоті зали. Дитина до 12 безкоштовно." },
+      { id:"estufa", name:"Ештуфа Фріа", query:"Estufa Fria Lisboa", lat:38.72855, lng:-9.15485, tags:["childfree","play"], area:"Парк Едуарду VII", blurb:"Рослинні «печери». Часто безкоштовно до 6 років; у неділю до 14:00 для всіх. Уточніть на касі." },
+      { id:"oceanario", name:"Океанаріум Лісабона", query:"Oceanário de Lisboa", lat:38.76348, lng:-9.09375, tags:["paid","animal","indoor"], area:"Парк Націй", blurb:"З 3 років платно. Найдешевше: вечір онлайн ~38€, або 9€ якщо дорослому до 30 (до 30.09.2026)." },
+      { id:"zoo", name:"Лісабонський зоопарк", query:"Jardim Zoológico de Lisboa", lat:38.74435, lng:-9.17125, tags:["paid","animal"], area:"Сете Ріуш", blurb:"Платно. Онлайн близько 47,50€ за 1 дорослого + дитину." }
     ];
+
     const filters = [
-      {id:"all",label:"All"},{id:"always",label:"Always free"},{id:"childfree",label:"Child often free"},
-      {id:"animal",label:"Animals"},{id:"play",label:"Playgrounds"},{id:"water",label:"Water / splash"},
-      {id:"view",label:"Views"},{id:"indoor",label:"Indoor"},{id:"paid",label:"Paid"}
+      {id:"all",label:"Усе"},
+      {id:"always",label:"Завжди безкоштовно"},
+      {id:"childfree",label:"Дитина часто безкоштовно"},
+      {id:"animal",label:"Тварини"},
+      {id:"play",label:"Майданчики"},
+      {id:"water",label:"Вода / бризки"},
+      {id:"view",label:"Види"},
+      {id:"indoor",label:"У приміщенні"},
+      {id:"paid",label:"Платно"}
     ];
+
+    function mapsUrl(p){
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.query);
+    }
+    function tagLabel(t){
+      return ({always:"Завжди безкоштовно",childfree:"Дитина до 12 часто безкоштовно",animal:"Тварини",play:"Гра",water:"Вода",view:"Вид",indoor:"Усередині",paid:"Платно"})[t]||t;
+    }
+
     let active = "all";
     const map = L.map("map");
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -113,28 +133,35 @@
     function colorFor(p){ if(p.tags.includes("paid")) return "#c45c4a"; if(p.tags.includes("childfree")) return "#e7a23a"; return "#1b6b8a"; }
     function pin(p){ return L.divIcon({className:"",html:`<div style="width:16px;height:16px;border-radius:50%;background:${colorFor(p)};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,iconSize:[16,16],iconAnchor:[8,8]}); }
     function visible(){ return places.filter(p => active==="all" || p.tags.includes(active)); }
-    function tagLabel(t){ return ({always:"Always free",childfree:"Child ≤12 often free",animal:"Animals",play:"Play",water:"Water",view:"View",indoor:"Indoor",paid:"Paid"})[t]||t; }
     function highlight(id){ document.querySelectorAll(".card").forEach(c=>c.classList.toggle("active",c.dataset.id===id)); const el=document.querySelector(`.card[data-id="${id}"]`); if(el) el.scrollIntoView({block:"nearest"}); }
-    function showCity(){ map.fitBounds(allBounds, { padding: [40, 40] }); }
+    function popupHtml(p){
+      return `<strong>${p.name}</strong><br><small>${p.query}</small><br>${p.blurb}<br><a href="${mapsUrl(p)}" target="_blank" rel="noopener">Маршрут у Google Maps</a>`;
+    }
     function render(){
       const data = visible();
       document.getElementById("list").innerHTML = data.map(p =>
-        `<article class="card" data-id="${p.id}"><h3>${p.name}</h3><div class="meta">${p.tags.map(t=>`<span class="tag ${t}">${tagLabel(t)}</span>`).join("")}<span class="tag">${p.area}</span></div><p>${p.blurb}</p></article>`
+        `<article class="card" data-id="${p.id}">
+          <h3 data-focus="${p.id}">${p.name}</h3>
+          <div class="pt">${p.query}</div>
+          <div class="meta">${p.tags.map(t=>`<span class="tag ${t}">${tagLabel(t)}</span>`).join("")}<span class="tag">${p.area}</span></div>
+          <p>${p.blurb}</p>
+          <a class="go" href="${mapsUrl(p)}" target="_blank" rel="noopener">Маршрут</a>
+        </article>`
       ).join("");
       layer.clearLayers();
       data.forEach(p => {
         const m = L.marker([p.lat, p.lng], { icon: pin(p) }).addTo(layer);
-        m.bindPopup(`<strong>${p.name}</strong><br>${p.blurb}`);
+        m.bindPopup(popupHtml(p));
         m.on("click", () => highlight(p.id));
         markers[p.id] = m;
       });
-      document.querySelectorAll(".card").forEach(card => card.onclick = () => {
-        const p = places.find(x => x.id === card.dataset.id);
+      document.querySelectorAll("[data-focus]").forEach(el => el.onclick = () => {
+        const p = places.find(x => x.id === el.getAttribute("data-focus"));
         map.setView([p.lat, p.lng], 16);
         markers[p.id].openPopup();
         highlight(p.id);
       });
-      if (active === "all") showCity();
+      if (active === "all") map.fitBounds(allBounds, { padding: [40, 40] });
       else if (data.length) map.fitBounds(L.latLngBounds(data.map(p => [p.lat, p.lng])), { padding: [40, 40] });
     }
     filters.forEach(f => {
